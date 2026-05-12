@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Events{% endblock %}
+{% block content %}
+<h2>Event Management</h2>
+
+<div class="split events-workspace">
+    <section class="card event-panel">
+        <h3>Create Event</h3>
+        <form method="post" class="grid-form">
+            <input type="hidden" name="action" value="create_event">
+            <label>Host Party
+                <select name="hostPartyId" required>
+                    {% for p in parties %}
+                        <option value="{{ p.partyId }}">{{ p.contactPersonName }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Event Type
+                <input name="eventType" list="event-type-options" placeholder="Choose existing or type new..." required>
+                <datalist id="event-type-options">
+                    {% for et in event_types %}
+                        <option value="{{ et.eventType }}"></option>
+                    {% endfor %}
+                </datalist>
+            </label>
+            
+            <label>Start Time <input type="datetime-local" name="startTime" required></label>
+            <label>End Time <input type="datetime-local" name="endTime" required></label>
+            
+            <label>Estimated Guests <input name="estimatedGuestCount" type="number" min="0"></label>
+            <button class="btn" type="submit">Create Event</button>
+        </form>
+    </section>
+
+    <section class="card event-panel">
+        <h3>Assign / Re-assign Room</h3>
+        <form method="post" class="grid-form">
+            <input type="hidden" name="action" value="add_event_room">
+            <label>Select Event
+                <select name="eventId" required>
+                    {% for e in events %}
+                        <option value="{{ e.eventId }}">Event #{{ e.eventId }} - {{ e.eventType }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Select Available Room
+                <select name="roomId" required>
+                    <option value="" disabled selected>-- Available Rooms Only --</option>
+                    {% for r in rooms %}
+                        <option value="{{ r.roomId }}">{{ r.roomLabel }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button class="btn" type="submit">Assign / Update Room</button>
+            <small class="event-note">An event can only have one room. Re-assigning will overwrite the current room.</small>
+        </form>
+    </section>
+</div>
+
+<section class="card">
+    <h3>Events Overview</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th><th>Type</th><th>Host</th><th>Start</th><th>End</th><th>Guests</th><th>Assigned Room</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for e in events %}
+            <tr>
+                <td>{{ e.eventId }}</td>
+                <td>{{ e.eventType }}</td>
+                <td>{{ e.contactPersonName }}</td>
+                <td>{{ e.startTime|replace('T', ' ') }}</td>
+                <td>{{ e.endTime|replace('T', ' ') }}</td>
+                <td>{{ e.estimatedGuestCount or "-" }}</td>
+                <td>
+                    {% set ns = namespace(found=false) %}
+                    {% for er in event_rooms %}
+                        {% if er.eventId == e.eventId %}
+                            <span class="event-room-assigned">{{ er.roomLabel }}</span>
+                            {% set ns.found = true %}
+                        {% endif %}
+                    {% endfor %}
+                    {% if not ns.found %}
+                        <span class="event-room-empty">Not Assigned</span>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+{% endblock %}

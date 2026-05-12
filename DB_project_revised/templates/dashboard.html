@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+
+
+<div class="dashboard-banner">
+    <img src="{{ url_for('static', filename='images/hotel_pic.jpg') }}" 
+         alt="Last Resort Hotel" 
+         class="hotel-banner-img">
+    <div class="banner-overlay">
+        <div class="banner-content">
+            <h1>Last Resort</h1>
+            <p class="banner-subtitle">Home to All Travellers</p>
+            <div class="banner-date" id="currentDate"></div>
+        </div>
+    </div>
+</div>
+
+<h2>Hotel Management Dashboard</h2>
+
+<form method="get" class="grid-form">
+    <label>Date From <input type="date" name="date_from" value="{{ filters.date_from }}"></label>
+    <label>Date To <input type="date" name="date_to" value="{{ filters.date_to }}"></label>
+    <label>Building
+        <select name="building_id" id="sel-building">
+            <option value="">All</option>
+            {% for b in buildings %}
+                <option value="{{ b.buildingId }}" {% if filters.building_id == b.buildingId|string %}selected{% endif %}>{{ b.buildingName }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>Wing
+        <select name="wing_code" id="sel-wing">
+            <option value="">All</option>
+            {% for w in wings %}
+                <option value="{{ w.wingCode }}"
+                        {% if filters.wing_code == w.wingCode %}selected{% endif %}>Wing {{ w.wingCode }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <label>Party Type
+        <select name="party_type">
+            <option value="">All</option>
+            {% for p in party_types %}
+                <option value="{{ p.partyType }}" {% if filters.party_type == p.partyType %}selected{% endif %}>{{ p.partyType }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <div class="dashboard-filter-actions">
+        <button type="submit" class="btn">Apply</button>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Clear</a>
+    </div>
+</form>
+
+<section class="kpi-grid">
+    <article class="card"><h3>Total Revenue</h3><p>${{ '%.2f'|format(revenue) }}</p></article>
+    <article class="card"><h3>Active Assignments</h3><p>{{ active_assignments }}</p></article>
+    <article class="card"><h3>Total Events</h3><p>{{ total_events }}</p></article>
+    <article class="card"><h3>Avg Stay (days)</h3><p>{{ avg_stay_days }}</p></article>
+    <article class="card"><h3>Open Tickets</h3><p>{{ open_tickets }}</p></article>
+</section>
+
+<section class="card">
+    <h3>Room Status by Building</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Building</th>
+                <th class="metric-available">Available</th>
+                <th class="metric-occupied">Occupied</th>
+                <th class="metric-maintenance">Maintenance</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for row in occupancy %}
+            <tr>
+                <td>{{ row.buildingName }}</td>
+                <td>{{ row.available }}</td>
+                <td>{{ row.occupied }}</td>
+                <td>{{ row.maintenance }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<section class="card">
+    <h3>Revenue Trend (12 Months)</h3>
+    <div style="height: 250px;">
+        <canvas id="revenueChart"></canvas>
+    </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// Display current date in banner
+const dateElement = document.getElementById('currentDate');
+if (dateElement) {
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    dateElement.textContent = new Date().toLocaleDateString('en-US', options);
+}
+
+// Wing filter logic
+(function () {
+    const WINGS = {{ wings_json | safe }};
+    const wingBuildingMap = {};
+    WINGS.forEach(w => { wingBuildingMap[w.wingCode] = w.buildingIds; });
+
+    const selBuilding = document.getElementById('sel-building');
+    const selWing     = document.getElementById('sel-wing');
+    const allWingOpts = Array.from(selWing.querySelectorAll('option[value]:not([value=""])'));
+
+    function filterWings() {
+        const bid = selBuilding.value === '' ? null : parseInt(selBuilding.value);
+        let activeSelected = false;
+
+        allWingOpts.forEach(opt => {
+            const bids  = wingBuildingMap[opt.value] || [];
+            const match = bid === null || bids.includes(bid);
+            opt.hidden   = !match;
+            opt.disabled = !match;
+            if (!match && opt.selected) opt.selected = false;
+            if (match && opt.selected) activeSelected = true;
+        });
+
+        if (!activeSelected) {
+            selWing.querySelector('option[value=""]').selected = true;
+        }
+    }
+
+    selBuilding.addEventListener('change', filterWings);
+    filterWings();
+})();
+
+// Revenue trend chart
+const ctx = document.getElementById('revenueChart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: {{ trend_labels | tojson }},
+        datasets: [{
+            label: 'Revenue ($)',
+            data: {{ trend_data | tojson }},
+            borderColor: '#c6a15b',
+            backgroundColor: 'rgba(198, 161, 91, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointBackgroundColor: '#c6a15b'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { 
+                beginAtZero: true,
+                ticks: { callback: v => '$' + v.toLocaleString() }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

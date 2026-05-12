@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+{% block title %}Inventory{% endblock %}
+{% block content %}
+<h2>Inventory Management</h2>
+
+<section class="card inventory-filter-card">
+    <h3>Search & Filter Rooms</h3>
+    <form method="get" class="inventory-filter-form">
+        <label>Room ID
+            <input type="text" name="search_room_id" value="{{ filters.search_room_id }}" placeholder="e.g. GL-A or OT-B-101">
+        </label>
+        
+        <label>Status
+            <select name="filter_status">
+                <option value="">-- All Status --</option>
+                <option value="Available" {% if filters.filter_status == 'Available' %}selected{% endif %}>Available</option>
+                <option value="Occupied" {% if filters.filter_status == 'Occupied' %}selected{% endif %}>Occupied</option>
+                <option value="Maintenance" {% if filters.filter_status == 'Maintenance' %}selected{% endif %}>Maintenance</option>
+            </select>
+        </label>
+
+        <label>Function
+            <select name="filter_function">
+                <option value="">-- All Functions --</option>
+                {% for fn in functions %}
+                    <option value="{{ fn.functionCode }}" {% if filters.filter_function == fn.functionCode %}selected{% endif %}>{{ fn.functionName }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label>Bed Type
+            <select name="filter_bed_type">
+                <option value="">-- All Bed Types --</option>
+                {% for bt in bed_types %}
+                    <option value="{{ bt.bedTypeId }}" {% if filters.filter_bed_type == bt.bedTypeId|string %}selected{% endif %}>{{ bt.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label>Max Base Rate ($)
+            <input type="number" step="10" min="0" name="filter_max_rate" value="{{ filters.filter_max_rate }}" placeholder="Up to...">
+        </label>
+
+        <div class="inventory-filter-actions">
+            <button class="btn" type="submit">Apply</button>
+            <a href="{{ url_for('inventory') }}" class="btn btn-secondary">Clear</a>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    <h3>Rooms ({{ rooms|length }} found)</h3>
+    <table>
+        <thead>
+        <tr>
+            <th>Room</th><th>Building</th><th>Wing</th><th>Floor</th><th>Rate</th><th>Capacity</th><th>Status</th><th>Non-Smoking</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for room in rooms %}
+            <tr>
+                <td><strong>{{ room.roomLabel }}</strong></td>
+                <td>{{ room.buildingName }}</td>
+                <td>{{ room.wingCode }}</td>
+                <td>{{ room.floorNumber }}</td>
+                <td>${{ "%.2f"|format(room.baseRate) }}</td>
+                <td>{{ room.maxCapacity }}</td>
+                <td>
+                    <span class="room-status room-status--{{ room.currentStatus|lower }}">
+                        {{ room.currentStatus }}
+                    </span>
+                </td>
+                <td>{{ "Yes" if room.nonSmokingFloor else "No" }}</td>
+            </tr>
+        {% else %}
+            <tr><td colspan="9" style="text-align: center; color: #94a3b8;">No rooms match your criteria.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+
+<div class="inventory-actions-grid">
+    <section class="card inventory-action-card">
+        <h3>Update Room Basics</h3>
+        <form method="post" class="grid-form">
+            <input type="hidden" name="action" value="update_room">
+            <label>Select Room
+                <select name="roomId" required>
+                    {% for room in rooms %}
+                        <option value="{{ room.roomId }}">{{ room.roomLabel }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Base Rate <input type="number" step="0.01" name="baseRate" required></label>
+            <label>Max Capacity <input type="number" name="maxCapacity" required></label>
+            <label>Status
+                <select name="currentStatus" required>
+                    <option>Available</option>
+                    <option>Occupied</option>
+                    <option>Maintenance</option>
+                </select>
+            </label>
+            <button class="btn" type="submit">Update Room</button>
+        </form>
+    </section>
+
+    <section class="card inventory-action-card">
+        <h3>Add Room Function</h3>
+        <form method="post" class="grid-form">
+            <input type="hidden" name="action" value="add_room_function">
+            <label>Select Room
+                <select name="roomId" required>
+                    {% for room in rooms %}
+                        <option value="{{ room.roomId }}">{{ room.roomLabel }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Function
+                <select name="functionCode" required>
+                    {% for fn in functions %}
+                        <option value="{{ fn.functionCode }}">{{ fn.functionName }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Activeness <input name="activeness" value="Active"></label>
+            <button class="btn" type="submit">Add Function</button>
+        </form>
+    </section>
+
+    <section class="card inventory-action-card">
+        <h3>Add Bed Configuration</h3>
+        <form method="post" class="grid-form">
+            <input type="hidden" name="action" value="add_room_bed">
+            <label>Select Room
+                <select name="roomId" required>
+                    {% for room in rooms %}
+                        <option value="{{ room.roomId }}">{{ room.roomLabel }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Bed Type
+                <select name="bedTypeId" required>
+                    {% for bt in bed_types %}
+                        <option value="{{ bt.bedTypeId }}">{{ bt.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Quantity <input type="number" name="quantity" value="1" min="1" required></label>
+            <label class="inventory-checkbox-row">
+                <input type="checkbox" name="isFoldable" value="1"> Foldable Bed
+            </label>
+            <button class="btn" type="submit">Add Bed Setup</button>
+        </form>
+    </section>
+</div>
+
+<div class="split">
+    <section class="card">
+        <h3>Current Room Functions</h3>
+        <table>
+            <thead><tr><th>Room</th><th>Code</th><th>Name</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for rf in room_functions %}
+                <tr><td>{{ rf.roomLabel }}</td><td>{{ rf.functionCode }}</td><td>{{ rf.functionName }}</td><td>{{ rf.activeness }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="card">
+        <h3>Current Bed Configurations</h3>
+        <table>
+            <thead><tr><th>Room</th><th>Type</th><th>Qty</th><th>Foldable</th></tr></thead>
+            <tbody>
+            {% for rb in room_beds %}
+                <tr><td>{{ rb.roomLabel }}</td><td>{{ rb.bedType }}</td><td>{{ rb.quantity }}</td><td>{{ "Yes" if rb.isFoldable else "No" }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+
+<section class="card">
+    <h3>Existing Room Adjacency</h3>
+    <table>
+        <thead><tr><th>Room 1</th><th>Room 2</th><th>Connection Type</th></tr></thead>
+        <tbody>
+        {% for link in adjacency %}
+            <tr><td>{{ link.roomLabel1 }}</td><td>{{ link.roomLabel2 }}</td><td>{{ link.connectionType }}</td></tr>
+        {% else %}
+            <tr><td colspan="3" style="text-align: center;">No adjacency data recorded.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

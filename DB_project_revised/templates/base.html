@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Last Resort Admin{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body class="page-{{ request.endpoint or 'home' }}">
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <span class="brand-mark" aria-hidden="true">LR</span>
+            <div>
+                <h1>Last Resort</h1>
+                <p>Luxury Hotel Operations</p>
+            </div>
+        </div>
+        <nav>
+            {% set ep = request.endpoint %}
+            <a href="{{ url_for('dashboard') }}"{% if ep == 'dashboard' %} class="active"{% endif %}>Dashboard</a>
+            <a href="{{ url_for('inventory') }}"{% if ep == 'inventory' %} class="active"{% endif %}>Inventory</a>
+            <a href="{{ url_for('parties') }}"{% if ep == 'parties' %} class="active"{% endif %}>Parties</a>
+            <a href="{{ url_for('reservations') }}"{% if ep == 'reservations' %} class="active"{% endif %}>Reservations</a>
+            <a href="{{ url_for('assignments') }}"{% if ep == 'assignments' %} class="active"{% endif %}>Assignments & Stay</a>
+            <a href="{{ url_for('events') }}"{% if ep == 'events' %} class="active"{% endif %}>Events</a>
+            <a href="{{ url_for('billing') }}"{% if ep == 'billing' %} class="active"{% endif %}>Billing</a>
+            <a href="{{ url_for('maintenance') }}"{% if ep == 'maintenance' %} class="active"{% endif %}>Maintenance</a>
+        </nav>
+    </aside>
+    <main class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-stack">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+</div>
+</body>
+</html>
